@@ -1,0 +1,38 @@
+# Secrets and local configuration (never commit)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+build/
+dist/
+
+# Test and coverage output
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Django
+backend/staticfiles/
+backend/media/
+*.log
+# ServeFlow requires PostgreSQL; make sure a stray SQLite file is never committed
+*.sqlite3
+*.db
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Frontend (added later)
+node_modules/

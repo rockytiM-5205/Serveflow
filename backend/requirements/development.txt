@@ -1,0 +1,5 @@
+# Development and test dependencies.
+-r base.txt
+
+pytest>=8.4,<10
+pytest-django>=4.11,<5

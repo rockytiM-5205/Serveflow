@@ -1,0 +1,10 @@
+# Runtime dependencies. Python 3.12+ required.
+# Exact pins were checked against the Django and DRF release notes on 2026-10-16.
+# Ranges (>=,<) are used where the exact latest version was not verified;
+# freeze exact versions into a lock file before the first deployment.
+
+Django==5.2.18                  # 5.2 LTS, current patch release
+djangorestframework==3.18.3     # supports Django 5.2
+drf-spectacular==0.30.0         # OpenAPI 3 schema generation
+psycopg[binary]>=3.2,<4         # PostgreSQL driver (psycopg 3)
+django-environ>=0.12,<1         # .env loading
