@@ -64,8 +64,8 @@ DATABASES = {
         "NAME": require("POSTGRES_DB", _DB_HINT),
         "USER": require("POSTGRES_USER", _DB_HINT),
         "PASSWORD": require("POSTGRES_PASSWORD", _DB_HINT),
-        "HOST": require("POSTGRES_HOST", _DB_HINT),
-        "PORT": require("POSTGRES_PORT", _DB_HINT),
+        # "HOST": require("POSTGRES_HOST", _DB_HINT),
+        # "PORT": require("POSTGRES_PORT", _DB_HINT),
     }
 }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

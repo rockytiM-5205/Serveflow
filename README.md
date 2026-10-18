@@ -93,10 +93,10 @@ python manage.py check
 pytest
 ```
 
-> **Expected until Stage 2:** `AUTH_USER_MODEL` already points to
-> `accounts.User`, which is implemented in the next stage. Until then every
-> Django command, including `check` and `pytest`, fails with
-> `AUTH_USER_MODEL refers to model 'accounts.User' that has not been installed`.
+> **Stage 2 status:** the `User` model exists but its migration has not been
+> generated yet (it needs review first). `python manage.py check` should pass.
+> Generate and review the migration (see below) before running `pytest`, which
+> builds a test database.
 
 ## Migration sequence
 
@@ -119,7 +119,7 @@ backend/
   manage.py
   pytest.ini
   config/            settings/{base,development,testing,production}.py, env.py, urls, wsgi, asgi
-  apps/accounts/     custom user model (next stage)
+  apps/accounts/     custom email-login user
   apps/restaurants/  restaurant and membership models (after accounts)
   requirements/      base.txt, development.txt
   tests/
