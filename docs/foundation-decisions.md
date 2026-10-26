@@ -33,3 +33,43 @@ serving, application server, CI.
 | Required fields | none beyond email and password | Names optional |
 | Accounts for customers | none | Guest ordering in the MVP |
 | Deactivation | `is_active=False`, no deletes | Payments and orders protect their user references |
+
+## Stage 3: Restaurant and membership decisions
+
+| Decision | Choice | Reason |
+|---|---|---|
+| New restaurants | `accepting_orders=False`, `pickup_enabled=True` | Nothing is orderable until a restaurant is set up deliberately |
+| Currency, timezone | No defaults | Per-restaurant facts; currency format is validated (`[A-Z]{3}`), not checked against the ISO list; timezone must be a valid IANA name |
+| Fulfilment | At least one of pickup/dine-in enabled; `requires_table_number` only with dine-in | DB CHECK constraints |
+| Slug | 3-63 chars, `[a-z0-9]` with single hyphens, reserved list blocked | DB CHECK plus validators; editing the reserved list needs a migration |
+| Membership role | `OWNER`/`MANAGER`/`STAFF` (CHECK), default `STAFF`, unique per (restaurant, user) | Least privilege; a user may belong to several restaurants |
+| Deletion | Restaurants and memberships cannot be deleted in admin; users are PROTECTed | Deactivate instead; keeps history intact |
+| Last-owner rule | Validated in `clean()` only | Not race-safe and bypassable by `.update()`; the member-management service must enforce it under a row lock |
+
+Not yet enforced: `slug`, `currency` and `timezone` immutability after a restaurant's
+first order (orders do not exist yet).
+
+## Self-service onboarding
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Who may create accounts and restaurants | Anyone, only when `DJANGO_SELF_SERVICE=True`; superusers always; max 5 owned restaurants per user | Lets restaurants set up without Django admin, but public sign-up is opt-in because it invites spam |
+| Email verification | None | No email delivery yet. Anyone can register any address, so the address proves nothing about who they are |
+| Adding team members | Managers add staff, owners add anyone; new accounts get a starting password set by the adder | No email invitations yet. Attaching an existing email reveals that the account exists |
+| Last-owner rule | Enforced under a per-restaurant row lock in `services.change_member`; callers are re-read under the lock | Replaces the admin-only `clean()` check for API use |
+| Slug | Permanent after creation | It is part of public links |
+
+## Orders
+
+| Decision | Choice | Confirm with the restaurant |
+|---|---|---|
+| Prices | Server-side only; the client sends ids and quantities | |
+| Customer access | Signed token (HMAC of order id and version) in the link; no accounts | |
+| Order codes | Three digits, restart each local day per restaurant | Yes: do they want a running number instead? |
+| Customer cancellation | Immediate, only while the order is pending | Yes |
+| Paying | Staff record payment after the order is served, full amount, cash or transfer | Yes: some restaurants take payment first |
+| Cancelling a served-in-progress order | Managers and owners only, explicit acknowledgement, audited | |
+| Phone numbers | Not verified. At most 3 pending orders per phone per restaurant | Yes |
+| Retries | `Idempotency-Key` on order creation and payment; answers kept 48 hours | |
+| Staff queue updates | Polling every 15 seconds, no push notifications or sound | |
+| Not built | Refunds and voiding a payment, partial payments, delivery, online payment, customer accounts, receipts, notifications to customers | |

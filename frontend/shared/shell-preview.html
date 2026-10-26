@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Dashboard shell (development)</title>
+  <link rel="stylesheet" href="css/tokens.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/layout.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="shell">
+    <nav class="nav" aria-label="Main">
+      <a class="brand nav__brand" href="shell-preview.html"><span class="brand__mark"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#i-utensils"/></svg></span>ServeFlow</a>
+      <a class="nav__item" href="shell-preview.html" aria-current="page"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#i-list"/></svg>Orders</a>
+      <a class="nav__item" href="shell-preview.html"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#i-book"/></svg>Menu</a>
+      <a class="nav__item" href="shell-preview.html"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#i-settings"/></svg>Settings</a>
+    </nav>
+    <main class="shell__main stack" id="main">
+      <div class="alert alert--warning" role="note"><svg class="icon" aria-hidden="true"><use href="assets/icons.svg#i-info"/></svg><span>Development preview of the staff layout. Sample content only.</span></div>
+      <h1>Orders</h1>
+      <div class="chip-nav" style="padding-inline:0" role="group" aria-label="Filter by status">
+        <button class="chip" type="button" aria-current="true">All</button>
+        <button class="chip" type="button" aria-current="false">Pending</button>
+        <button class="chip" type="button" aria-current="false">Confirmed</button>
+        <button class="chip" type="button" aria-current="false">Serving</button>
+        <button class="chip" type="button" aria-current="false">Served</button>
+      </div>
+      <div class="card empty"><span class="empty__icon"><svg class="icon icon--lg" aria-hidden="true"><use href="assets/icons.svg#i-list"/></svg></span><h2>No orders yet</h2><p>New orders appear here as soon as customers place them.</p></div>
+    </main>
+  </div>
+</body>
+</html>

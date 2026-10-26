@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="referrer" content="same-origin">
+  <link rel="stylesheet" href="../shared/css/tokens.css">
+  <link rel="stylesheet" href="../shared/css/base.css">
+  <link rel="stylesheet" href="../shared/css/components.css">
+  <link rel="stylesheet" href="../shared/css/layout.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <title>Overview · ServeFlow</title>
+  <script type="module" src="js/overview.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <div class="boot" id="boot" role="status" aria-live="polite">
+    <div class="stack" aria-label="Loading">
+      <div class="skeleton skeleton--line" style="width:60%"></div>
+      <div class="skeleton skeleton--line"></div>
+      <div class="skeleton skeleton--line" style="width:80%"></div>
+    </div>
+    <noscript>ServeFlow needs JavaScript to run.</noscript>
+  </div>
+  <div class="shell" id="app" hidden>
+    <nav class="nav" id="nav" aria-label="Main"></nav>
+    <main class="shell__main" id="main">
+      <header class="page-head">
+        <p class="eyebrow" id="restaurant-name"></p>
+        <h1>Overview</h1>
+      </header>
+      <div class="stack" id="content"></div>
+    </main>
+  </div>
+</body>
+</html>

@@ -93,10 +93,10 @@ python manage.py check
 pytest
 ```
 
-> **Stage 2 status:** the `User` model exists but its migration has not been
-> generated yet (it needs review first). `python manage.py check` should pass.
-> Generate and review the migration (see below) before running `pytest`, which
-> builds a test database.
+> **Current status:** the models, the auth/tenant API, the menu API and the orders API exist, but their migrations
+> have not been generated (each needs review first). Generate and review them (see
+> below), then `python manage.py check` and `pytest`. CI fails until migrations are
+> committed (`makemigrations --check`). Endpoints are listed in [docs/api.md](docs/api.md).
 
 ## Migration sequence
 
@@ -104,9 +104,17 @@ pytest
    Review and commit `0001_initial.py`.
 2. Only then run `python manage.py migrate` for the first time. Never migrate
    before the accounts migration exists.
-3. Implement `restaurants` models, then `makemigrations restaurants` and review.
-4. Add later apps (`menu`, `orders`, `audit`) one at a time, each with its own
-   reviewed migration.
+3. `makemigrations restaurants`, review.
+4. `makemigrations menu`, then **copy** `docs/migrations/menu_0002_composite_category_fk.py` to
+   `backend/apps/menu/migrations/0002_composite_category_fk.py` (drop the `menu_` prefix). It is a hand-written
+   migration that adds the same-restaurant foreign key Django cannot generate, and it needs `0001_initial` to exist
+   first, which is why it is not already in place. Then `makemigrations audit`. Review all of them.
+   A test fails if the copy step is skipped.
+5. Orders point at menu items, so keep this order: `makemigrations menu` (it adds a small constraint migration,
+   `0003`), then `makemigrations orders`, then **copy** `docs/migrations/orders_0002_composite_fks.py` to
+   `backend/apps/orders/migrations/0002_composite_fks.py` (drop the `orders_` prefix). It adds the same-restaurant foreign
+   keys Django cannot generate. A test fails if the copy step is skipped. Then `migrate`.
+6. Optionally schedule `python manage.py purge_idempotency` (daily) to delete stored retry answers older than 48 hours.
 
 ## Layout
 
@@ -115,15 +123,27 @@ pytest
 .gitignore
 README.md
 docs/
+frontend/          HTML/CSS/vanilla JS (see frontend/README.md)
 backend/
   manage.py
   pytest.ini
   config/            settings/{base,development,testing,production}.py, env.py, urls, wsgi, asgi
   apps/accounts/     custom email-login user
-  apps/restaurants/  restaurant and membership models (after accounts)
+  apps/restaurants/  Restaurant and RestaurantMembership models
   requirements/      base.txt, development.txt
   tests/
 ```
 
 `DJANGO_ENV` (`development`, `testing`, `production`) selects the settings
 module. If unset it defaults to `production`, the strictest.
+
+## Troubleshooting
+
+**The page says "Request failed (500)".** Django hit an error. The terminal running `runserver` prints the traceback
+(server errors are always logged there). For the full error page in the browser, set `DJANGO_DEBUG=True` in `.env`,
+restart `runserver`, and open the failing URL directly, e.g. `http://localhost:8000/api/v1/restaurants/<slug>/`.
+Typical causes: a migration not applied (`python manage.py showmigrations` lists unapplied ones with `[ ]`), or a
+migration file missing. Turn `DJANGO_DEBUG` back off afterwards.
+
+**"No restaurant access" after signing in.** The account has no restaurant yet. With `DJANGO_SELF_SERVICE=True` the
+dashboard offers "Create your restaurant"; otherwise an owner must add you under Team.

@@ -42,3 +42,18 @@ def test_settings_module_rejects_unknown_environment(monkeypatch):
     monkeypatch.setenv("DJANGO_ENV", "staging")
     with pytest.raises(ImproperlyConfigured):
         settings_module()
+
+
+def test_error_envelope_and_auth_classes_are_configured(settings):
+    rf = settings.REST_FRAMEWORK
+    assert rf["EXCEPTION_HANDLER"] == "apps.common.exceptions.api_exception_handler"
+    assert rf["DEFAULT_AUTHENTICATION_CLASSES"] == ["apps.common.authentication.CsrfSessionAuthentication"]
+
+
+def test_login_throttle_rates_are_set(settings):
+    rates = settings.REST_FRAMEWORK["DEFAULT_THROTTLE_RATES"]
+    assert rates["login_ip"] and rates["login_email"]
+
+
+def test_admin_url_is_normalised(settings):
+    assert settings.ADMIN_URL.endswith("/") and not settings.ADMIN_URL.startswith("/")

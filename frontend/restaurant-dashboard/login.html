@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="referrer" content="same-origin">
+  <link rel="stylesheet" href="../shared/css/tokens.css">
+  <link rel="stylesheet" href="../shared/css/base.css">
+  <link rel="stylesheet" href="../shared/css/components.css">
+  <link rel="stylesheet" href="../shared/css/layout.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <title>Sign in · ServeFlow</title>
+  <script type="module" src="js/login.js"></script>
+</head>
+<body>
+  <main class="auth-page">
+    <div class="card auth-card">
+      <div class="auth-brand"><span class="brand"><span class="brand__mark"><svg class="icon" aria-hidden="true"><use href="../shared/assets/icons.svg#i-utensils"/></svg></span>ServeFlow</span></div>
+      <h1>Sign in</h1>
+      <p class="muted" style="margin-top:var(--s-1)">Restaurant staff only.</p>
+      <div class="alert alert--warning" id="expired" role="status" hidden style="margin-top:var(--s-4)"><svg class="icon" aria-hidden="true"><use href="../shared/assets/icons.svg#i-clock"/></svg><span>Your session ended. Sign in again to continue.</span></div>
+      <div class="alert alert--danger" id="form-alert" role="alert" hidden style="margin-top:var(--s-4)"><svg class="icon" aria-hidden="true"><use href="../shared/assets/icons.svg#i-alert"/></svg><span id="form-alert-text"></span></div>
+      <form class="stack" id="login-form" novalidate style="margin-top:var(--s-5)">
+        <div class="field" id="field-email">
+          <label class="label" for="email">Email</label>
+          <input class="input" id="email" name="email" type="email" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" aria-describedby="email-error" required>
+          <p class="error-text" id="email-error" hidden></p>
+        </div>
+        <div class="field" id="field-password">
+          <label class="label" for="password">Password</label>
+          <input class="input" id="password" name="password" type="password" autocomplete="current-password" aria-describedby="password-error" required>
+          <p class="error-text" id="password-error" hidden></p>
+        </div>
+        <button class="btn btn--primary btn--block" id="submit" type="submit">Sign in</button>
+      </form>
+      <p class="muted" id="signup-prompt" hidden style="margin-top:var(--s-5);text-align:center">New here? <a href="signup.html">Create an account</a></p>
+    </div>
+  </main>
+</body>
+</html>

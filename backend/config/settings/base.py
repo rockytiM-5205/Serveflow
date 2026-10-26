@@ -11,6 +11,14 @@ _DB_HINT = "ServeFlow requires PostgreSQL; there is no SQLite fallback."
 SECRET_KEY = require("DJANGO_SECRET_KEY")
 DEBUG = env.bool("DJANGO_DEBUG", default=False)
 ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=[])
+# Platform admin lives at a configurable path; set a non-default value in production.
+ADMIN_URL = env.str("DJANGO_ADMIN_URL", default="admin/").strip("/") + "/"
+
+# --- Self-service onboarding --------------------------------------------------
+# When on, anyone can create an account and a restaurant from the dashboard (no Django admin
+# needed). Off by default: turn it on deliberately, because public sign-up invites spam.
+SELF_SERVICE = env.bool("DJANGO_SELF_SERVICE", default=False)
+MAX_RESTAURANTS_PER_USER = 5
 
 # --- Applications ------------------------------------------------------------
 INSTALLED_APPS = [
@@ -26,6 +34,9 @@ INSTALLED_APPS = [
     # ServeFlow
     "apps.accounts",
     "apps.restaurants",
+    "apps.menu",
+    "apps.audit",
+    "apps.orders",
 ]
 
 MIDDLEWARE = [
@@ -97,7 +108,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # authentication_classes = [] explicitly.
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
+        "apps.common.authentication.CsrfSessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
@@ -105,11 +116,38 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": ["rest_framework.renderers.JSONRenderer"],
     "DEFAULT_PARSER_CLASSES": ["rest_framework.parsers.JSONParser"],
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+    "EXCEPTION_HANDLER": "apps.common.exceptions.api_exception_handler",
+    "DEFAULT_THROTTLE_RATES": {
+        "login_ip": "5/min",
+        "login_email": "5/min",
+        "signup": "10/hour",
+        "restaurant_create": "10/hour",
+        "password_change": "5/min",
+        "order_create": "10/min",
+        "order_phone": "20/hour",
+        "order_lookup": "60/min",
+        "order_cancel": "10/min",
+    },
 }
+
+# Throttle counters live in the cache. LocMemCache is per process: with several
+# workers each keeps its own count, so limits are weaker than they look. Use a shared
+# cache (Redis, or Django's database cache) before running more than one worker.
+CACHES = {"default": {"BACKEND": "django.core.cache.backends.locmem.LocMemCache"}}
 
 SPECTACULAR_SETTINGS = {
     "TITLE": "ServeFlow API",
     "DESCRIPTION": "Multi-tenant restaurant ordering API.",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "SCHEMA_PATH_PREFIX": "/api/v1",
+    "COMPONENT_SPLIT_REQUEST": True,
+}
+
+# Print server errors (with tracebacks) to the terminal even when DEBUG is off.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "loggers": {"django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False}},
 }
