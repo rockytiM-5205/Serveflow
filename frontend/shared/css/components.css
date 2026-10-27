@@ -175,3 +175,11 @@
   .table--stack td { display: flex; justify-content: space-between; align-items: center; gap: var(--s-4); padding: var(--s-2) 0; border: 0; text-align: right; }
   .table--stack td::before { content: attr(data-label); font-weight: 600; color: var(--ink-3); text-align: left; }
 }
+
+/* ---------- Live badge ---------- */
+.live { display: inline-flex; align-items: center; gap: 0.45rem; padding: 0.2rem 0.65rem; border-radius: var(--r-pill); background: var(--accent-soft); color: var(--accent); font-size: var(--fs-xs); font-weight: 700; white-space: nowrap; }
+.live__dot { width: 0.5rem; height: 0.5rem; border-radius: 50%; background: currentColor; animation: live-pulse 1.8s ease-out infinite; }
+.live[data-state="reconnecting"] { background: var(--warning-soft); color: var(--warning-ink); }
+.live[data-state="paused"] { background: var(--surface-sunken); color: var(--ink-3); }
+.live[data-state="paused"] .live__dot { animation: none; }
+@keyframes live-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 45%, transparent); } 70%, 100% { box-shadow: 0 0 0 0.45rem transparent; } }

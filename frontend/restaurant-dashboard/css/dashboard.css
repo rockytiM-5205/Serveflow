@@ -65,3 +65,7 @@ button.nav__item { background: transparent; border: 0; font-family: inherit; cur
 .total-row { display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-4); padding-top: var(--s-3); border-top: 1px solid var(--line); font-size: var(--fs-lg); }
 .history { margin: 0; padding-left: var(--s-5); display: grid; gap: var(--s-2); font-size: var(--fs-sm); }
 .history__reason { overflow-wrap: anywhere; }
+
+.page-head { position: relative; }
+.page-head .live { position: absolute; top: 0; right: 0; }
+.sound-toggle[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }

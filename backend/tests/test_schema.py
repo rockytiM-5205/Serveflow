@@ -31,6 +31,7 @@ def test_schema_generates_without_warnings(tmp_path):
         "/api/v1/restaurants/{slug}/orders/{public_id}/transitions/",
         "/api/v1/restaurants/{slug}/orders/{public_id}/cancel/",
         "/api/v1/restaurants/{slug}/orders/{public_id}/payment/",
+        "/api/v1/restaurants/{slug}/checkout/",
         "/api/v1/orders/{token}/",
         "/api/v1/orders/{token}/cancel/",
     ):

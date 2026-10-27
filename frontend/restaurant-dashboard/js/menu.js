@@ -1,6 +1,7 @@
 import { ApiError, api } from "../../shared/js/api.js";
 import { confirmDialog, el, emptyState, formatMoney, icon, toast } from "../../shared/js/ui.js";
 import { isHttpsUrl, isValidPrice, isValidSortOrder } from "../../shared/js/validators.js";
+import { attachBadge, liveBadge, startLive } from "../../shared/js/live.js";
 import { formDialog } from "./form-dialog.js";
 import { hasRole } from "./session.js";
 import { bootDashboard, handleSessionExpiry } from "./shell.js";
@@ -62,18 +63,26 @@ async function main() {
     toast(err instanceof ApiError ? err.message : "Something went wrong.", { type: "error" });
   };
 
+  async function fetchAll() {
+    const [restaurant, cats, its] = await Promise.all([
+      api.get(`${base}/`),
+      api.get(`${base}/menu/categories/`),
+      api.get(`${base}/menu/items/${showArchived ? "?include_archived=1" : ""}`),
+    ]);
+    return { currency: restaurant.currency, categories: cats, items: its };
+  }
+
+  let lastSignature = "";
+  function apply(data) {
+    ({ currency, categories, items } = data);
+    lastSignature = JSON.stringify(data);
+    render();
+  }
+
   async function load() {
     content.replaceChildren(skeleton());
     try {
-      const [restaurant, cats, its] = await Promise.all([
-        api.get(`${base}/`),
-        api.get(`${base}/menu/categories/`),
-        api.get(`${base}/menu/items/${showArchived ? "?include_archived=1" : ""}`),
-      ]);
-      currency = restaurant.currency;
-      categories = cats;
-      items = its;
-      render();
+      apply(await fetchAll());
     } catch (err) {
       if (handleSessionExpiry(err, HREF)) return;
       const forbidden = err instanceof ApiError && err.status === 403;
@@ -212,6 +221,24 @@ async function main() {
   }
 
   await load();
+
+  // Live: pick up changes other staff make (availability, new items) every 10 seconds.
+  const badge = liveBadge();
+  attachBadge(badge);
+  startLive({
+    badge,
+    intervalMs: 10000,
+    shouldSkip: () => Boolean(document.querySelector('dialog[open], [aria-busy="true"], .switch:disabled')),
+    refresh: async () => {
+      try {
+        const data = await fetchAll();
+        if (JSON.stringify(data) !== lastSignature) apply(data);
+      } catch (err) {
+        if (handleSessionExpiry(err, HREF)) return;
+        throw err;
+      }
+    },
+  });
 }
 
 main();

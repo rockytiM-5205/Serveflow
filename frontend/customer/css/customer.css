@@ -36,3 +36,6 @@
 .timeline__step[data-current="true"] { font-weight: 700; }
 .timeline__step[data-current="true"]::before { box-shadow: 0 0 0 4px var(--accent-soft), inset 0 0 0 3px var(--surface); }
 .menu-page.has-cart-bar { padding-bottom: 8rem; }
+
+.live--corner { position: absolute; top: var(--s-4); right: var(--s-4); }
+.order-card-wrap { position: relative; }

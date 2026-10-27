@@ -123,9 +123,9 @@ REST_FRAMEWORK = {
         "signup": "10/hour",
         "restaurant_create": "10/hour",
         "password_change": "5/min",
-        "order_create": "10/min",
+        "order_create": "30/min",
         "order_phone": "20/hour",
-        "order_lookup": "60/min",
+        "order_lookup": "600/min",
         "order_cancel": "10/min",
     },
 }

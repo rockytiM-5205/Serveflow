@@ -49,7 +49,9 @@ that host to `DJANGO_ALLOWED_HOSTS`.
 
 ```
 frontend/
-  index.html                   development index
+  index.html                   the public landing page
+  dev.html                     development index (links to every page)
+  landing/                     landing.css, landing.js, assets/ (optional photos)
   dev_server.py                static server + same-origin API proxy
   shared/
     css/  tokens, base, components, layout   (used by both apps)
@@ -111,3 +113,27 @@ Page rendering and interaction are not covered by automated tests; check them in
 - The order link is kept in the page address after `#`, so it is not sent to the server in page requests or referrers. The
   last order's link is also remembered in `localStorage` so the customer can find it again.
 - The dashboard queue refreshes every 15 seconds while the tab is visible and flags new orders.
+
+## Live updates
+
+Every page that shows changing data re-checks the server by itself, only while its tab is visible, and never while a
+dialog is open or a button is busy:
+
+| Page | Refreshes |
+|---|---|
+| Dashboard: Orders (new orders flash, a toast appears, optional chime via the "Sound" button) | every 5 s |
+| Dashboard: Overview (orders needing attention, "orders are off" notice) | every 5 s |
+| Customer: order tracking | every 5 s, stops once the order is served, rejected or cancelled |
+| Dashboard: Menu, Settings, Team | every 10 s |
+| Customer: menu (sold-out items, prices, restaurant opening or closing) | every 10 s |
+
+Pages show a small **Live** badge that turns to "Reconnecting…" after two failed checks and "Paused" while the tab is
+hidden. The logic is `shared/js/live.js`. It uses plain polling, so it needs no extra server software; if you later want
+instant pushes, that module is the single place to swap in server-sent events.
+
+## Landing page
+
+`index.html` is the public page: hero with dashboard and phone illustrations, how it works, why ServeFlow, a "built for
+the rush" band, and a closing call to action. It links to sign-up, sign-in and the API documentation (`/api/v1/docs/`).
+The illustrations are drawn in CSS (sample content, hidden from screen readers). Real photos are optional: see
+`landing/assets/README.md`. It contains no invented statistics, testimonials or prices; add real ones when you have them.
