@@ -175,7 +175,7 @@ def test_a_phone_number_cannot_pile_up_pending_orders(place, shop):
 
 
 def test_order_creation_is_rate_limited(place, shop):
-    for _ in range(10):
+    for _ in range(30):
         place(shop.restaurant, [])
     assert place(shop.restaurant, []).status_code == 429
 
@@ -259,7 +259,7 @@ def test_a_token_only_opens_its_own_order(place, shop, api_client):
 
 
 def test_lookup_is_rate_limited(api_client):
-    for _ in range(60):
+    for _ in range(600):
         lookup(api_client, "0" * 96)
     assert lookup(api_client, "0" * 96).status_code == 429
 

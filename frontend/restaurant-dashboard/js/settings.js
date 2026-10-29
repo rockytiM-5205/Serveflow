@@ -1,5 +1,6 @@
 import { ApiError, api } from "../../shared/js/api.js";
 import { el, emptyState, icon, toast } from "../../shared/js/ui.js";
+import { attachBadge, liveBadge, startLive } from "../../shared/js/live.js";
 import { formDialog } from "./form-dialog.js";
 import { fulfilmentErrors, restaurantFields } from "./regional.js";
 import { hasRole } from "./session.js";
@@ -26,6 +27,7 @@ async function main() {
   const url = `/restaurants/${encodeURIComponent(ctx.restaurant.slug)}/settings/`;
   const customerUrl = new URL(`../customer/index.html?r=${encodeURIComponent(ctx.restaurant.slug)}`, location.href).href;
   let data;
+  let lastJson = "";
 
   const failure = (err) => {
     if (handleSessionExpiry(err, HREF)) return;
@@ -36,6 +38,7 @@ async function main() {
     content.replaceChildren(skeleton());
     try {
       data = await api.get(url);
+      lastJson = JSON.stringify(data);
       render();
     } catch (err) {
       if (handleSessionExpiry(err, HREF)) return;
@@ -130,6 +133,27 @@ async function main() {
   }
 
   await load();
+
+  const badge = liveBadge();
+  attachBadge(badge);
+  startLive({
+    badge,
+    intervalMs: 10000,
+    shouldSkip: () => Boolean(document.querySelector('dialog[open], [aria-busy="true"], .switch:disabled')),
+    refresh: async () => {
+      try {
+        const fresh = await api.get(url);
+        const json = JSON.stringify(fresh);
+        if (json === lastJson) return;
+        data = fresh;
+        lastJson = json;
+        render();
+      } catch (err) {
+        if (handleSessionExpiry(err, HREF)) return;
+        throw err;
+      }
+    },
+  });
 }
 
 main();

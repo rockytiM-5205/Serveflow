@@ -105,7 +105,7 @@ async function main() {
       // The same order retried reuses its key, so a dropped connection can never place it twice.
       const key = idempotencyKeyFor(slug, payload);
       try {
-        return await api.post(`/restaurants/${encodeURIComponent(slug)}/orders/`, payload, { headers: { "Idempotency-Key": key } });
+        return await api.post(`/restaurants/${encodeURIComponent(slug)}/checkout/`, payload, { headers: { "Idempotency-Key": key } });
       } catch (err) {
         if (!(err instanceof ApiError)) throw err;
         if (err.code === "item_unavailable") {

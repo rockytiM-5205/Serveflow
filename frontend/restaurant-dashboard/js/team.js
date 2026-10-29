@@ -1,6 +1,7 @@
 import { ApiError, api } from "../../shared/js/api.js";
 import { el, emptyState, icon, setBusy, toast } from "../../shared/js/ui.js";
 import { isValidEmail } from "../../shared/js/validators.js";
+import { attachBadge, liveBadge, startLive } from "../../shared/js/live.js";
 import { formDialog } from "./form-dialog.js";
 import { ROLE_LABEL, displayName, hasRole } from "./session.js";
 import { bootDashboard, handleSessionExpiry } from "./shell.js";
@@ -113,11 +114,15 @@ async function main() {
     el("button", { class: "btn btn--primary", type: "button", onclick: addMember }, icon("plus"), "Add member"));
   const layout = [toolbar, el("div", { class: "table-wrap" }, table), more];
   let nextQuery = "";
+  let loadedMore = false; // extra pages are not live: refreshing would collapse them
 
-  async function loadPage(reset) {
+  async function loadPage(reset, { rethrow = false } = {}) {
     try {
       const page = await api.get(base + (reset ? "" : nextQuery));
-      if (reset) tbody.replaceChildren();
+      if (reset) {
+        tbody.replaceChildren();
+        loadedMore = false;
+      }
       tbody.append(...page.results.map(row));
       // The API returns an absolute URL; only its query string is used, so requests stay same-origin.
       nextQuery = page.next ? new URL(page.next, location.href).search : null;
@@ -125,6 +130,7 @@ async function main() {
       if (!layout[1].isConnected) content.replaceChildren(...layout);
     } catch (err) {
       if (handleSessionExpiry(err, HREF)) return;
+      if (rethrow) throw err;
       if (!layout[1].isConnected) showError(err, () => { content.replaceChildren(skeleton()); loadPage(true); });
       else failure(err);
     }
@@ -132,12 +138,22 @@ async function main() {
 
   more.addEventListener("click", async () => {
     setBusy(more, true);
+    loadedMore = true;
     await loadPage(false);
     setBusy(more, false);
   });
 
   content.replaceChildren(skeleton());
   await loadPage(true);
+
+  const badge = liveBadge();
+  attachBadge(badge);
+  startLive({
+    badge,
+    intervalMs: 10000,
+    shouldSkip: () => loadedMore || Boolean(document.querySelector('dialog[open], [aria-busy="true"]')),
+    refresh: () => loadPage(true, { rethrow: true }),
+  });
 }
 
 main();

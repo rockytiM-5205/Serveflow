@@ -1,12 +1,13 @@
 import { ApiError, api } from "../../shared/js/api.js";
 import { confirmDialog, el, emptyState, formatMoney, icon, toast } from "../../shared/js/ui.js";
+import { liveBadge, startLive } from "../../shared/js/live.js";
 import { loadLastOrder } from "./cart.js";
 import { DETAIL, HEADLINE, isTerminal, timelineSteps, tokenFromHash } from "./order-view.js";
 import { parseSlug } from "./helpers.js";
 
 const content = document.getElementById("content");
 const live = document.getElementById("live");
-const POLL_MS = 10000;
+const POLL_MS = 5000;
 
 const slugParam = parseSlug(location.search);
 const token = tokenFromHash(location.hash) ?? (slugParam ? loadLastOrder(slugParam) : null);
@@ -18,7 +19,8 @@ const notFound = () => show(emptyState({
   action: slugParam ? el("a", { class: "btn btn--secondary", href: `menu.html?r=${encodeURIComponent(slugParam)}` }, "Back to the menu") : null,
 }));
 
-let timer = null;
+let poller = null;
+const badge = liveBadge();
 let lastJson = "";
 let lastStatus = null;
 
@@ -40,6 +42,10 @@ function render(order) {
       el("span", { class: "muted" }, where)),
   );
 
+  header.style.position = "relative";
+  header.append(badge.root);
+  badge.root.classList.add("live--corner");
+  badge.root.hidden = isTerminal(order.status);
   const steps = el("ol", { class: "timeline", "aria-label": "Order progress" }, ...timelineSteps(order).map((step) =>
     el("li", { class: "timeline__step", "data-done": String(step.done), "data-current": String(step.current), "aria-current": step.current ? "step" : null },
       el("span", { class: "timeline__label" }, step.label))));
@@ -75,7 +81,7 @@ async function cancelOrder() {
   } catch (err) {
     if (err instanceof ApiError && err.status === 409) {
       toast("It's too late to cancel: the restaurant has already responded.", { type: "info" });
-      await poll();
+      await poll().catch(() => {});
     } else {
       toast(err instanceof ApiError ? err.message : "Couldn't cancel. Try again.", { type: "error" });
     }
@@ -94,19 +100,20 @@ function apply(order) {
 }
 
 function stop() {
-  clearInterval(timer);
-  timer = null;
+  poller?.stop();
+  poller = null;
 }
 
 async function poll() {
-  if (document.hidden) return;
   try {
     apply(await api.get(`/orders/${token}/`));
   } catch (err) {
     if (err instanceof ApiError && err.status === 404) {
       stop();
       notFound();
-    } // otherwise keep showing the last known state and try again next time
+      return;
+    }
+    throw err; // the Live badge shows "Reconnecting" after two failures in a row
   }
 }
 
@@ -125,10 +132,7 @@ async function main() {
     }));
     return;
   }
-  if (!isTerminal(lastStatus)) {
-    timer = setInterval(poll, POLL_MS);
-    document.addEventListener("visibilitychange", () => { if (!document.hidden && timer) poll(); });
-  }
+  if (!isTerminal(lastStatus)) poller = startLive({ refresh: poll, intervalMs: POLL_MS, badge, shouldSkip: () => false });
 }
 
 main();

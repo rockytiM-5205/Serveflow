@@ -145,5 +145,9 @@ restart `runserver`, and open the failing URL directly, e.g. `http://localhost:8
 Typical causes: a migration not applied (`python manage.py showmigrations` lists unapplied ones with `[ ]`), or a
 migration file missing. Turn `DJANGO_DEBUG` back off afterwards.
 
+**The dashboard Orders page says "GET not allowed".** An older build had two routes on one address. Make sure you are on a
+version where customers place orders at `/api/v1/restaurants/<slug>/checkout/` and staff list orders at `.../orders/`
+(`backend/tests/test_urls.py` fails if two API routes ever share an address).
+
 **"No restaurant access" after signing in.** The account has no restaurant yet. With `DJANGO_SELF_SERVICE=True` the
 dashboard offers "Create your restaurant"; otherwise an owner must add you under Team.

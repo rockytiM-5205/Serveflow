@@ -4,5 +4,5 @@ from django.urls import path
 from . import public_views
 
 urlpatterns = [
-    path("orders/", public_views.OrderCreateView.as_view(), name="public-order-create"),
+    path("checkout/", public_views.OrderCreateView.as_view(), name="public-order-create"),
 ]

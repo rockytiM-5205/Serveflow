@@ -1,11 +1,24 @@
 import { ApiError, api } from "../../shared/js/api.js";
 import { closeOnBackdrop, el, emptyState, formatMoney, icon, toast } from "../../shared/js/ui.js";
 import { isHttpsUrl } from "../../shared/js/validators.js";
+import { startLive } from "../../shared/js/live.js";
 import { createCart, describeCart, fromCents, loadLastOrder } from "./cart.js";
 import { bootCustomer, show, skeleton } from "./restaurant.js";
 
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const MAX_QUANTITY = 99;
+
+// Elements a render adds to <body>. They are removed before the next render, so a refresh never duplicates them.
+let mounted = [];
+const mount = (...nodes) => {
+  document.body.append(...nodes);
+  mounted.push(...nodes);
+};
+function unmount() {
+  mounted.forEach((node) => node.remove());
+  mounted = [];
+  document.body.classList.remove("has-cart-bar");
+}
 
 function placeholder() {
   return el("div", { class: "media-placeholder", "aria-hidden": "true" }, icon("image", { large: true }));
@@ -46,7 +59,23 @@ function main() {
     }
     show(el("div", { class: "menu-grid" }, ...Array.from({ length: 6 }, () => skeleton())));
     try {
-      render(await api.get(`/restaurants/${encodeURIComponent(slug)}/menu/`), slug, restaurant);
+      const menuUrl = `/restaurants/${encodeURIComponent(slug)}/menu/`;
+      const menu = await api.get(menuUrl);
+      render(menu, slug, restaurant);
+      // Live: pick up sold-out items, price changes and the restaurant opening or closing for orders.
+      let last = JSON.stringify([restaurant, menu]);
+      startLive({
+        intervalMs: 10000,
+        refresh: async () => {
+          const [info, fresh] = await Promise.all([api.get(`/restaurants/${encodeURIComponent(slug)}/`), api.get(menuUrl)]);
+          const json = JSON.stringify([info, fresh]);
+          if (json === last) return;
+          last = json;
+          const y = window.scrollY;
+          render(fresh, slug, info);
+          window.scrollTo(0, y);
+        },
+      });
     } catch (err) {
       show(emptyState({
         iconName: "alert", title: "Couldn't load the menu", text: err instanceof ApiError ? err.message : "Something went wrong.",
@@ -57,6 +86,7 @@ function main() {
 }
 
 function render(menu, slug, restaurant) {
+  unmount();
   const { categories } = menu;
   const currency = menu.restaurant.currency;
   const chipNav = document.getElementById("chips");
@@ -72,6 +102,7 @@ function render(menu, slug, restaurant) {
 
   const itemsById = new Map(categories.flatMap((c) => c.items).map((item) => [item.id, item]));
   const ordering = restaurant.accepting_orders;
+  document.getElementById("cart-button").hidden = !ordering;
   const cart = createCart(slug);
   if (ordering) {
     const removed = cart.reconcile(itemsById);
@@ -175,12 +206,13 @@ function render(menu, slug, restaurant) {
   const notice = ordering ? null : el("div", { class: "alert alert--warning", role: "note" }, icon("clock"),
     el("span", {}, "This restaurant isn't taking orders right now. You can still look at the menu."));
   show(el("div", { class: "stack" }, notice, ...sections));
-  document.body.append(categorySheet, fab);
+  mount(categorySheet, fab);
 
   const observer = new IntersectionObserver((entries) => {
     for (const entry of entries) if (entry.isIntersecting) setCurrent(entry.target.dataset.id);
   }, { rootMargin: "-25% 0px -65% 0px" });
   sections.forEach((section) => observer.observe(section));
+  mounted.push({ remove: () => observer.disconnect() });
 
   if (ordering) mountCart(cart, itemsById, currency, slug, cardRefreshers);
 }
@@ -204,8 +236,8 @@ function mountCart(cart, itemsById, currency, slug, cardRefreshers) {
         el("button", { class: "btn btn--ghost btn--sm", type: "button", "aria-label": "Close", onclick: () => sheet.close() }, icon("x"))),
       sheetBody));
   closeOnBackdrop(sheet);
-  document.body.append(bar, sheet);
-  headerButton.addEventListener("click", () => openSheet());
+  mount(bar, sheet);
+  headerButton.onclick = () => openSheet();
 
   function openSheet() {
     renderSheet();

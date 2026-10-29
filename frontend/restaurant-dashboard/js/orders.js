@@ -1,6 +1,7 @@
 import { ApiError, api } from "../../shared/js/api.js";
 import { closeOnBackdrop, el, emptyState, formatMoney, icon, setBusy, toast } from "../../shared/js/ui.js";
 import { formDialog } from "./form-dialog.js";
+import { attachBadge, defaultShouldSkip, liveBadge, startLive } from "../../shared/js/live.js";
 import { ROLE_LABEL, hasRole } from "./session.js";
 import { bootDashboard, handleSessionExpiry } from "./shell.js";
 import { formatClock, formatDateTime, timeAgo } from "./time.js";
@@ -18,6 +19,26 @@ const STATUS_LABEL = { PENDING: "Pending", CONFIRMED: "Confirmed", SERVING: "Bei
 const ACTOR_LABEL = { CUSTOMER: "Customer", STAFF: "Staff", MANAGER: "Manager", OWNER: "Owner", SYSTEM: "System" };
 
 const content = document.getElementById("content");
+const SOUND_STORAGE_KEY = "serveflow.sound";
+const soundWanted = () => {
+  try { return localStorage.getItem(SOUND_STORAGE_KEY) === "on"; } catch { return false; }
+};
+let audio = null;
+/** Two short beeps. The audio context is created from a click, which browsers require. */
+function chime() {
+  if (!audio) return;
+  [0, 0.22].forEach((offset) => {
+    const osc = audio.createOscillator();
+    const gain = audio.createGain();
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.0001, audio.currentTime + offset);
+    gain.gain.exponentialRampToValueAtTime(0.25, audio.currentTime + offset + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + offset + 0.18);
+    osc.connect(gain).connect(audio.destination);
+    osc.start(audio.currentTime + offset);
+    osc.stop(audio.currentTime + offset + 0.2);
+  });
+}
 const newKey = () => crypto.randomUUID().replaceAll("-", "");
 
 async function main() {
@@ -30,7 +51,7 @@ async function main() {
   let orders = [];
   let nextQuery = null;
   let known = null; // ids seen so far, to spot new orders
-  let polling = null;
+  let loadedMore = false; // "Load more" pages are not live: refreshing would collapse them
 
   const failure = (err) => {
     if (handleSessionExpiry(err, HREF)) return;
@@ -44,17 +65,27 @@ async function main() {
 
   const query = (extra = {}) => `?${new URLSearchParams({ ...filter.params, ...extra })}`;
 
-  async function refresh({ quiet = false } = {}) {
+  /** Fetch and draw the newest orders. Throws on failure. `announce` flags new ones (toast, and a chime if switched on). */
+  async function load({ announce = false } = {}) {
+    const page = await api.get(`${base}/orders/${query({ page_size: 100 })}`);
+    const fresh = page.results.filter((o) => known && !known.has(o.public_id) && o.status === "PENDING");
+    known = new Set([...(known ?? []), ...page.results.map((o) => o.public_id)]);
+    orders = page.results;
+    loadedMore = false;
+    nextQuery = page.next ? new URL(page.next, location.href).search : null;
+    render(new Set(fresh.map((o) => o.public_id)));
+    if (announce && fresh.length) {
+      toast(fresh.length === 1 ? `New order #${fresh[0].code}` : `${fresh.length} new orders`, { type: "success" });
+      if (soundWanted()) chime();
+    }
+  }
+
+  /** After an action or a filter change: refresh now and report any error. */
+  async function refresh() {
     try {
-      const page = await api.get(`${base}/orders/${query()}`);
-      const fresh = page.results.filter((o) => known && !known.has(o.public_id) && o.status === "PENDING");
-      known = new Set([...(known ?? []), ...page.results.map((o) => o.public_id)]);
-      orders = page.results;
-      nextQuery = page.next ? new URL(page.next, location.href).search : null;
-      render(new Set(fresh.map((o) => o.public_id)));
-      if (fresh.length && !quiet) toast(fresh.length === 1 ? `New order #${fresh[0].code}` : `${fresh.length} new orders`, { type: "success" });
+      await load();
     } catch (err) {
-      if (!quiet || handleSessionExpiry(err, HREF)) failure(err);
+      failure(err);
     }
   }
 
@@ -75,7 +106,7 @@ async function main() {
   async function advance(order, to_status, message) {
     await transition(order, to_status);
     toast(message, { type: "success" });
-    await refresh({ quiet: true });
+    await refresh();
   }
 
   async function withReason(order, { title, description, label, submitLabel, request, done }) {
@@ -86,7 +117,7 @@ async function main() {
     });
     if (saved) {
       toast(done, { type: "success" });
-      await refresh({ quiet: true });
+      await refresh();
     }
   }
 
@@ -121,7 +152,7 @@ async function main() {
     });
     if (saved) {
       toast("Payment recorded.", { type: "success" });
-      await refresh({ quiet: true });
+      await refresh();
     }
   }
 
@@ -206,12 +237,13 @@ async function main() {
     const chips = el("div", { class: "chip-nav", style: "padding-inline:0", role: "group", "aria-label": "Show orders" },
       ...FILTERS.map((f) => el("button", {
         class: "chip", type: "button", "aria-current": String(f.id === filter.id),
-        onclick: () => { filter = f; known = null; content.replaceChildren(skeleton()); refresh({ quiet: true }); },
+        onclick: () => { filter = f; known = null; content.replaceChildren(skeleton()); refresh(); },
       }, f.label)));
     const more = el("button", { class: "btn btn--secondary", type: "button", hidden: !nextQuery }, "Load more");
     more.addEventListener("click", () => run(more, async () => {
       const page = await api.get(`${base}/orders/${nextQuery}`);
       orders = [...orders, ...page.results];
+      loadedMore = true;
       nextQuery = page.next ? new URL(page.next, location.href).search : null;
       render();
     }));
@@ -234,14 +266,45 @@ async function main() {
   } catch (err) {
     failure(err);
   }
-  await refresh({ quiet: true });
-  polling = setInterval(() => {
-    if (!document.hidden && !document.querySelector("dialog[open]")) refresh();
-  }, POLL_MS);
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden && !document.querySelector("dialog[open]")) refresh();
+  await refresh();
+
+  // Live: look for new and changed orders every 5 seconds.
+  const badge = liveBadge();
+  attachBadge(badge);
+  const sound = el("button", { class: "btn btn--secondary btn--sm sound-toggle", type: "button", "aria-pressed": String(soundWanted()) },
+    "Sound: ", el("span", {}, soundWanted() ? "on" : "off"));
+  sound.addEventListener("click", () => {
+    const on = !soundWanted();
+    try { localStorage.setItem(SOUND_STORAGE_KEY, on ? "on" : "off"); } catch { /* ignore */ }
+    if (on) {
+      audio ??= new (window.AudioContext ?? window.webkitAudioContext)();
+      audio.resume?.();
+      chime();
+    }
+    sound.setAttribute("aria-pressed", String(on));
+    sound.lastChild.textContent = on ? "on" : "off";
   });
-  window.addEventListener("pagehide", () => clearInterval(polling));
+  if (soundWanted()) {
+    // Browsers only allow sound after a click, so a saved "on" starts at the next click anywhere.
+    document.addEventListener("click", () => { audio ??= new (window.AudioContext ?? window.webkitAudioContext)(); }, { once: true });
+  }
+  document.querySelector(".page-head").append(sound);
+  sound.style.marginTop = "var(--s-2)";
+  sound.style.justifySelf = "start";
+
+  startLive({
+    badge,
+    intervalMs: 5000,
+    shouldSkip: () => loadedMore || defaultShouldSkip(),
+    refresh: async () => {
+      try {
+        await load({ announce: true });
+      } catch (err) {
+        if (handleSessionExpiry(err, HREF)) return;
+        throw err;
+      }
+    },
+  });
 }
 
 main();
